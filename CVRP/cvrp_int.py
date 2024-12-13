@@ -3,10 +3,18 @@ import numpy as np
 from cvrp_optimizer import solve_cvrp
 import pandas as pd
 
-st.title("Capacitated Vehicle Routing Problem (CVRP) Solver")
+#st.title("Capacitated Vehicle Routing Problem (CVRP) Solver")
+st.markdown(
+    """
+    <h1 style='text-align: center; color: white; font: serif;'>
+        Capacitated Vehicle Routing Problem (CVRP) Solver
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
 
 # Number of clients (including depot)
-N = st.number_input("Enter the number of clients (including depot):", min_value=1, value=2, step=1)
+N = st.number_input("Enter the number of clients (including depot):", min_value=1, value=3, step=1)
 
 # Vehicle capacity
 Q = st.number_input("Enter vehicle capacity:", min_value=1, value=15)
@@ -32,6 +40,9 @@ st.subheader("Enter the values for the distance matrix:")
 edited_matrix = st.data_editor(initial_matrix, num_rows="dynamic")
 
 D = np.array(edited_matrix)
+
+# Diagonal lezem tkoun 0 (distance between client 0 and client 0)
+np.fill_diagonal(D, 0)
 
 # Solve
 if st.button("Solve CVRP"):
