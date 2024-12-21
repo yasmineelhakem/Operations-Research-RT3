@@ -4,3 +4,5 @@ CVRP/ultimate_optimizer.py
 CVRP/__pycache__/
 Production Planning/__pycache__/
 CVRP/test.py
+cvrp/routes.png
+cvrp/test_int.py

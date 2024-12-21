@@ -2,8 +2,8 @@ import streamlit as st
 import numpy as np
 from optimizer import solve_cvrp
 import pandas as pd
+from affichage import affichage
 
-#st.title("Capacitated Vehicle Routing Problem ")
 st.markdown(
     """
     <h1 style='text-align: center; color: white; font: serif;'>
@@ -72,6 +72,10 @@ if st.button("Solve CVRP"):
         st.write(f"Total travel distance: {result['total_distance']}")
         for k, route in result["routes"].items():
             st.write(f"Vehicle {k + 1}:")
-            st.write(" -> ".join(f"{i} to {j}" for i, j in route))
+            #st.write("then ".join(f"{i} to {j} " for i, j in route))
+            if route :
+                st.write(affichage(route))
+            else:
+                st.write(f"Vehicule number {k +1 } is not needed")
     else:
         st.error(result["status"])

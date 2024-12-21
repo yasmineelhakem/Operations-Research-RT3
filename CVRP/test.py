@@ -75,6 +75,8 @@ if model.status == grb.GRB.OPTIMAL:
         for i in range(N):
             for j in range(N):
                 if i != j and x[i, j, k].x > 0.5:  # If x[i, j, k] is close to 1
+                    #print(x[i, j, k])
+                    #print(x)
                     print(f"  {i} -> {j}")
 else:
     print("\nNo optimal solution found.")
