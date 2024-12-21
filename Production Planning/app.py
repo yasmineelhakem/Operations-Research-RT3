@@ -1,5 +1,5 @@
 import streamlit as st
-from ppp_optimizer import production_planning_optimizer
+from optimizer import production_planning_optimizer
 import pandas as pd
 
 st.title("Production Planning: Maximizing Profit")

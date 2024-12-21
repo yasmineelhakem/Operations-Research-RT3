@@ -2,7 +2,6 @@ import gurobipy as grb
 def solve_cvrp(N, Q, K, d, D):
 
     try:
-        # Create the model
         model = grb.Model("CVRP")
 
         # Decision variables
@@ -66,10 +65,8 @@ def solve_cvrp(N, Q, K, d, D):
                     f"Flow_{j}_{k}"
                 )
 
-        # Optimize the model
         model.optimize()
 
-        # Extract results
         if model.status == grb.GRB.OPTIMAL:
             routes = {k: [] for k in range(K)}
             for k in range(K):

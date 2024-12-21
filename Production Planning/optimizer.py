@@ -1,7 +1,6 @@
 from gurobipy import Model, GRB
 
 def production_planning_optimizer(periods, demand, selling_price, production_cost, storage_cost, capacity, storage_max, initial_stock):
-    # Create the Gurobi model
     model = Model("Production Planning (Maximizing Profit)")
 
     # Variables de décision
