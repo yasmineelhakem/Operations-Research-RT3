@@ -1,4 +1,8 @@
 import gurobipy as grb
+import streamlit as st
+# Access the token from secrets
+gurobi_token = st.secrets["gurobi"]["token"]
+grb.setParam('Token', gurobi_token)
 def solve_cvrp(N, Q, K, d, D):
 
     try:
