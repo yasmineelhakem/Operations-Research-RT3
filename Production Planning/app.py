@@ -1,39 +1,56 @@
 import streamlit as st
-from optimizer import production_planning_optimizer
 import pandas as pd
+from optimizer import production_planning_optimizer
 
-st.title("Production Planning: Maximizing Profit")
-st.header("Input Data")
-num_periods = st.slider("Number of Periods", 1, 10, 3)
+st.title("Optimisation de la Production pour Plusieurs Produits")
+st.header("Données d'entrée")
 
+num_products = st.slider("Nombre de produits", 1, 5, 2)
+num_periods = st.slider("Nombre de périodes", 1, 10, 3)
+
+products = [f"Produit {i+1}" for i in range(num_products)]
+periods = list(range(1, num_periods + 1))
+
+# Propriétés des produits
+properties = {}
+for p in products:
+    st.subheader(f"Propriétés de {p}")
+    properties[p] = {
+        "perissable": st.checkbox(f"{p} est périssable"),
+        "critique": st.checkbox(f"{p} est critique"),
+        "fragile": st.checkbox(f"{p} est fragile"),
+    }
+
+# Tableau des données
 input_data = pd.DataFrame(
     {
-        "Period": list(range(1, num_periods + 1)),
-        "Demand": [80] * num_periods,
-        "Selling Price": [100] * num_periods,
-        "Production Cost": [50] * num_periods,
-        "Storage Cost": [5] * num_periods,
-        "Production Capacity": [100] * num_periods,
+        "Produit": products * num_periods,
+        "Période": [p for _ in products for p in periods],
+        "Demande": [80] * num_products * num_periods,
+        "Prix de vente": [100] * num_products * num_periods,
+        "Coût de production": [50] * num_products * num_periods,
+        "Coût de stockage": [5] * num_products * num_periods,
+        "Capacité de production": [100] * num_products * num_periods,
     }
 )
-
 input_data = st.data_editor(input_data, key="input_data", use_container_width=True)
+#print(input_data)
 
-storage_max = st.number_input("Max Storage Capacity", min_value=0, value=50, step=10)
-initial_stock = st.number_input("Initial Stock", min_value=0, value=20, step=5)
+storage_max = {p: st.number_input(f"Capacité max de stockage pour {p}", min_value=0, value=50, step=10) for p in products}
+initial_stock = {p: st.number_input(f"Stock initial pour {p}", min_value=0, value=20, step=5) for p in products}
 
-if st.button("Solve Optimization Problem"):
+if st.button("Résoudre le problème d'optimisation"):
     try:
-        # Extract data from the single table
-        periods = list(input_data["Period"])
-        demand = dict(zip(periods, input_data["Demand"]))
-        selling_price = dict(zip(periods, input_data["Selling Price"]))
-        production_cost = dict(zip(periods, input_data["Production Cost"]))
-        storage_cost = dict(zip(periods, input_data["Storage Cost"]))
-        capacity = dict(zip(periods, input_data["Production Capacity"]))
+        demand = {p: dict(zip(periods, input_data[input_data["Produit"] == p]["Demande"])) for p in products}
+        selling_price = {p: dict(zip(periods, input_data[input_data["Produit"] == p]["Prix de vente"])) for p in products}
+        production_cost = {p: dict(zip(periods, input_data[input_data["Produit"] == p]["Coût de production"])) for p in products}
+        storage_cost = {p: dict(zip(periods, input_data[input_data["Produit"] == p]["Coût de stockage"])) for p in products}
+        capacity = {p: dict(zip(periods, input_data[input_data["Produit"] == p]["Capacité de production"])) for p in products}
 
-        # Call the optimization function
+        print("demand",demand)
+
         results = production_planning_optimizer(
+            products=products,
             periods=periods,
             demand=demand,
             selling_price=selling_price,
@@ -42,22 +59,22 @@ if st.button("Solve Optimization Problem"):
             capacity=capacity,
             storage_max=storage_max,
             initial_stock=initial_stock,
+            properties=properties,
         )
 
-        st.success("Optimal solution found!")
-        st.write("Production Plan and Stock Levels:")
-
-        st.write("### Production Plan")
-        result_table = pd.DataFrame(
-            {
-                "Period": periods,
-                "Produced": [results["Production"][t] for t in periods],
-                "Stock": [results["Stock"][t] for t in periods],
-            }
-        )
-        st.table(result_table)
-
-        st.write(f"**Total Profit:** {results['Profit']:.2f}")
+        st.success("Solution optimale trouvée!")
+        st.write("### Résultats par produit")
+        for p in products:
+            st.write(f"#### {p}")
+            result_table = pd.DataFrame(
+                {
+                    "Période": periods,
+                    "Production": [results["Production"][p][t] for t in periods],
+                    "Stock": [results["Stock"][p][t] for t in periods],
+                }
+            )
+            st.table(result_table)
+        st.write(f"**Profit total :** {results['Profit']:.2f}")
 
     except Exception as e:
-        st.error(str(e))
+        st.error(f"Erreur: {str(e)}")

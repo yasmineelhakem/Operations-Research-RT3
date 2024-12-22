@@ -1,47 +1,55 @@
 from gurobipy import Model, GRB
 
-def production_planning_optimizer(periods, demand, selling_price, production_cost, storage_cost, capacity, storage_max, initial_stock):
-    model = Model("Production Planning (Maximizing Profit)")
+def production_planning_optimizer(products, periods, demand, selling_price, production_cost, storage_cost, capacity, storage_max, initial_stock, properties):
+    model = Model("Production Planning (Multi-Product)")
 
     # Variables de décision
-    x = model.addVars(periods, vtype=GRB.CONTINUOUS, name="Production")  # quantité produite pour chaque période
-    s = model.addVars(periods, vtype=GRB.CONTINUOUS, name="Stock")  # qt d=stockée à la fin de chaque période
+    x = model.addVars(products, periods, vtype=GRB.CONTINUOUS, name="Production")
+    s = model.addVars(products, periods, vtype=GRB.CONTINUOUS, name="Stock")
 
-    # Fonction Objective : Maximiser le profit : (revenue - cout tot de prof et stockage) pour chaque période
-    revenue = sum(selling_price[t] * demand[t] for t in periods)
-    costs = sum(production_cost[t] * x[t] for t in periods) + sum(storage_cost[t] * s[t] for t in periods)
+    # Fonction objective : Maximiser le profit
+    revenue = sum(selling_price[p][t] * demand[p][t] for p in products for t in periods)
+    costs = sum(production_cost[p][t] * x[p, t] for p in products for t in periods) + sum(storage_cost[p][t] * s[p, t] for p in products for t in periods)
     model.setObjective(revenue - costs, GRB.MAXIMIZE)
 
-    # Constraints
-    #Eq entre prod, stockage et demande pour chaque période
-    model.addConstr(s[1] == initial_stock + x[1] - demand[1], "Stock_1")
-    for t in periods[1:]:
-        model.addConstr(s[t] == s[t-1] + x[t] - demand[t], f"Stock_{t}")
+    # Contraintes
+    for p in products:
+        # Contraintes de balance production-stock-demande
+        model.addConstr(s[p, 1] == initial_stock[p] + x[p, 1] - demand[p][1], f"Stock_{p}_1")
+        for t in periods[1:]:
+            model.addConstr(s[p, t] == s[p, t - 1] + x[p, t] - demand[p][t], f"Stock_{p}_{t}")
 
-    # qt produite ne dépasse pas la capacité maximale de prod
-    for t in periods:
-        model.addConstr(x[t] <= capacity[t], f"Capacity_{t}")
+        # Limites de production et stockage
+        for t in periods:
+            model.addConstr(x[p, t] <= capacity[p][t], f"Capacity_{p}_{t}")
+            model.addConstr(s[p, t] <= storage_max[p], f"Storage_{p}_{t}")
+            model.addConstr(x[p, t] >= 0, f"NonNeg_Production_{p}_{t}")
+            model.addConstr(s[p, t] >= 0, f"NonNeg_Storage_{p}_{t}")
 
-    # qt stockée ne dépasse pas la capacité maximale de stock
-    for t in periods:
-        model.addConstr(s[t] <= storage_max, f"Storage_{t}")
+        # Produits critiques : stock minimum (il ne faut pas avoir stock ==0 )
+        if properties[p]["critique"]:
+            for t in periods:
+                model.addConstr(s[p, t] >= 10, f"Critique_{p}_{t}")  # Exemple : stock minimum = 10
 
-    # les variables doivent etre positives
-    for t in periods:
-        model.addConstr(x[t] >= 0, f"NonNeg_Production_{t}")
-        model.addConstr(s[t] >= 0, f"NonNeg_Storage_{t}")
+        # Produits périssables : stock doit être consommé rapidement ( produits alilentaires par exemples)
+        if properties[p]["perissable"]:
+            for t in periods:
+                if t + 1 in periods:
+                    model.addConstr(s[p, t + 1] <= 0.5 * s[p, t], f"Perissable_{p}_{t}")
 
-    # Solve the model
+        # Produits fragiles : stockage n'est pas le stockage maximal
+        if properties[p]["fragile"]:
+            for t in periods:
+                model.addConstr(s[p, t] <= 0.8 * storage_max[p], f"Fragile_{p}_{t}")  # Exemple : 20% de stockage max en moins
+
     model.optimize()
 
-    # Check if the solution is optimal
     if model.status == GRB.OPTIMAL:
         results = {
-            "Production": {t: x[t].X for t in periods},
-            "Stock": {t: s[t].X for t in periods},
-            "Profit": model.objVal
+            "Production": {p: {t: x[p, t].X for t in periods} for p in products},
+            "Stock": {p: {t: s[p, t].X for t in periods} for p in products},
+            "Profit": model.objVal,
         }
         return results
     else:
         raise Exception("No optimal solution found.")
-
